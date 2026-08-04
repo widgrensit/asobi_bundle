@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+# Not the Taure/erlang-ci reusable workflow. That runs eunit, dialyzer, ct and
+# coverage, and this package has no modules for any of them to analyse. What is
+# worth checking here is the only thing this package asserts: that the whole
+# first-party extension set resolves and that no two members collide.
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@v1
+        with:
+          version-file: .tool-versions
+          version-type: strict
+      - run: rebar3 fmt --check
+      - run: rebar3 compile
+      - run: rebar3 asobi check

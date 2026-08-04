@@ -1,0 +1,22 @@
+{application, asobi_bundle, [
+    {description, "asobi and every first-party extension, as one dependency"},
+    {vsn, git},
+    {registered, []},
+    %% No `mod`, no modules, no code. This application exists so that a release
+    %% can depend on the whole first-party set with one line, and so that
+    %% `rebar3 asobi check` has somewhere to run against all of it at once.
+    %%
+    %% Order is OTP's start order: asobi first, then each extension, because
+    %% every extension depends on asobi and none depends on another.
+    {applications, [
+        kernel,
+        stdlib,
+        asobi,
+        asobi_quests,
+        asobi_seasons
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]},
+    {links, [{"GitHub", "https://github.com/widgrensit/asobi_bundle"}]}
+]}.

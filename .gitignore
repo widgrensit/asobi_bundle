@@ -1,0 +1,12 @@
+_build/
+_checkouts/
+*.beam
+*.plt
+*.o
+ebin/
+log/
+.rebar3/
+rebar3.crashdump
+erl_crash.dump
+doc/
+*.coverdata
