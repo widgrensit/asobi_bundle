@@ -90,4 +90,4 @@ collision between two extensions is visible from here first.
 
 ## Licence
 
-Apache-2.0.
+[PolyForm Perimeter 1.0.1](https://polyformproject.org/licenses/perimeter/1.0.1) - source-available, non-compete. Use, modify, and self-host freely; you may not provide a product that competes with it. See [LICENSE](LICENSE).
