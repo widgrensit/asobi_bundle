@@ -1,0 +1,126 @@
+[
+    {kernel, [
+        {logger_level, debug},
+        {logger, [
+            {handler, default, logger_std_h, #{
+                formatter => {nova_jsonlogger, #{
+                    map_depth => 3,
+                    term_depth => 50,
+                    new_line => true
+                }}
+            }},
+            {filters, log, [
+                {progress, {fun logger_filters:progress/2, stop}}
+            ]}
+        ]}
+    ]},
+    {nova_auth, [
+        {pbkdf2_iterations, 100000}
+    ]},
+    {nova, [
+        {use_stacktrace, true},
+        {environment, dev},
+        {cowboy_configuration, #{
+            port => 8082
+        }},
+        {dev_mode, true},
+        {bootstrap_application, asobi},
+        {json_lib, json},
+        {plugins, [
+            %% H2 (2026-05-19): cap HTTP body size before nova_request_plugin
+            %% buffers it into the heap. Default 1 MiB; dev allows the same.
+            {pre_request, asobi_body_cap_plugin, #{
+                max_body => 1048576,
+                require_content_length => true
+            }},
+            {pre_request, nova_request_plugin, #{
+                decode_json_body => true,
+                parse_qs => true
+            }},
+            {pre_request, nova_cors_plugin, #{
+                allow_origins => ~"*"
+            }},
+            {pre_request, nova_correlation_plugin, #{}},
+            %% F-19: leave limiter unset so the plugin selects per-path
+            %% (auth/register/iap/api). See asobi_rate_limit_plugin:select_limiter/1.
+            {pre_request, asobi_rate_limit_plugin, #{}},
+            %% asobi#158: pre-auth traffic gate on the anonymous auth-create
+            %% routes. After the limiter so the cheap in-memory check sheds
+            %% floods before any external siteverify. No-op unless
+            %% `client_gate` is configured.
+            {pre_request, asobi_client_gate_plugin, #{}},
+            {post_request, asobi_security_headers_plugin, #{}}
+        ]}
+    ]},
+    {kura, [
+        {repo, asobi_repo},
+        {backend, kura_backend_postgres},
+        {host, "localhost"},
+        {port, 5432},
+        {database, "asobi_dev"},
+        {user, "postgres"},
+        {password, "postgres"},
+        {pool_size, 200}
+    ]},
+    {asobi, [
+        {nova_apps, [nova_resilience]},
+        {game_modes, #{
+            %% Map mode names to game behaviour modules
+            %% ~"default" => my_game_module
+        }},
+        {vote_templates, #{
+            %% Define reusable vote templates
+            %% ~"boon_pick" => #{method => ~"plurality", window_ms => 15000, visibility => ~"live"},
+            %% ~"path_choice" => #{method => ~"approval", window_ms => 20000, visibility => ~"hidden"},
+            %% ~"weighted_pick" => #{method => ~"weighted", window_ms => 15000}
+        }},
+        {rate_limits, #{
+            %% Per-group rate limits: #{limit => requests, window => milliseconds}
+            %%
+            %% In dev/test the per-IP brute-force pressure is absent and CT
+            %% fires a burst of register/login calls against 127.0.0.1. The
+            %% production-default `auth` cap of 5/sec will fail these
+            %% suites; loosen here. Production callers should override
+            %% these via OS env / prod sys config.
+            auth => #{limit => 1000, window => 1000},
+            register => #{limit => 1000, window => 1000},
+            iap => #{limit => 1000, window => 1000},
+            api => #{limit => 1000, window => 1000}
+        }},
+        {matchmaker, #{
+            tick_interval => 1000,
+            max_wait_seconds => 60
+        }},
+        {session, #{
+            token_ttl => 900,
+            refresh_ttl => 2592000
+        }}
+    ]},
+    {shigoto, [
+        {pool, asobi_repo},
+        {poll_interval, 500},
+        {queues, [
+            {~"default", 10}
+        ]},
+        {fanout_queues, [
+            {~"broadcast", 5, #{window => 120}}
+        ]}
+    ]},
+    {nova_resilience, [
+        {dependencies, [
+            #{name => primary_db,
+              type => database,
+              adapter => kura,
+              repo => asobi_repo,
+              critical => true,
+              breaker => #{failure_threshold => 5, wait_duration => 30000},
+              bulkhead => #{max_concurrent => 25},
+              shutdown_priority => 2}
+        ]},
+        {health_check_interval, 10000},
+        {vm_checks, true},
+        {gate_enabled, false},
+        {health_prefix, ~""}
+    ]},
+    {pg, [{scope, [nova_scope, asobi_presence, asobi_chat]}]}
+].

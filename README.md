@@ -3,18 +3,24 @@
 [asobi](https://github.com/widgrensit/asobi) and every first-party extension,
 as one dependency.
 
-There is no code in this repository. There is an `.app.src` listing
-applications and a `rebar.config` listing dependencies, and that is the whole
+There is (almost) no code in this repository. There is an `.app.src` listing
+applications, a `rebar.config` listing dependencies, and a `Dockerfile` +
+`docker-publish.yml` that build the ready-to-run image. That is the whole
 package.
 
 ```erlang
 %% your_game/rebar.config
-{deps, [{asobi_bundle, {git, "https://github.com/widgrensit/asobi_bundle.git", {branch, "main"}}}]}.
+{deps, [{asobi_bundle, {git, "https://github.com/widgrensit/asobi_bundle.git", {tag, "v0.1.0"}}}]}.
 
-{project_plugins, [{asobi, {git, "https://github.com/widgrensit/asobi.git", {branch, "main"}}}]}.
+{project_plugins, [{asobi, {git, "https://github.com/widgrensit/asobi.git", {tag, "v0.83.8"}}}]}.
 
 {relx, [{release, {your_game, "1.0.0"}, [your_game, asobi_bundle, sasl]}]}.
 ```
+
+First-party only, by construction. The bundle re-adds every application asobi
+*ships* to a release closure; it does nothing for third-party extensions. A
+self-hoster who wants a third-party (Tier E) extension adds its dependency and
+`relx` entry by hand - the official image has no third-party install path.
 
 | Application | What it is |
 |---|---|
@@ -34,13 +40,38 @@ This is that package, and it needed to exist the moment anything was extracted
 out of core. Before `asobi_seasons`, "everything asobi ships" and "asobi" were
 the same list.
 
+## The image
+
+This repository builds `ghcr.io/widgrensit/asobi` - the ready-to-run node: the
+game backend, the Lua runtime, the operator console, and every first-party
+extension in one image. That image used to be published from the asobi repo,
+back when the kernel and the batteries were the same list; since the first
+extraction they diverge, so the batteries image is built here where the release
+closure is `asobi` + every extension. The asobi repo no longer publishes an
+image - assemblers who want a bare kernel build their own release from the
+`asobi` dependency.
+
+## Not to be confused with `asobi_engine_bundle`
+
+Two different things wear the word "bundle":
+
+- **`asobi_bundle`** (this repo) is an OTP meta-*application*: a build-time
+  dependency closure that decides which extensions are compiled into a release.
+- **`asobi_engine_bundle`** (a module inside `asobi_engine`) is a *runtime*
+  concern: it fetches a tenant's Lua game code into the running node at boot.
+
+One is what code is in the image; the other is what game runs on it.
+
 ## What it deliberately is not
 
 - **Not a place for code.** It sits below asobi's extensions in the dependency
   order and above asobi. Anything living here would be reachable by neither.
-- **Not a version policy.** It pins nothing that the individual packages do
-  not. Depend on the extensions directly if you want to hold one back.
-- **Not required.** Two lines in `deps` and two in `relx` do the same thing.
+- **Not a compatibility matrix.** It pins exactly one CI-verified row - one
+  asobi minor plus the extension patches known to boot and pass `rebar3 asobi
+  check` together - in `rebar.config` + a committed `rebar.lock`. When asobi's
+  minor moves, the whole row moves with it. To hold one package back, depend on
+  the extensions directly instead.
+- **Not required.** A few lines in `deps` and `relx` do the same thing by hand.
 
 ## Validating the set
 
