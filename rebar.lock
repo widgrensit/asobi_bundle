@@ -1,7 +1,7 @@
 {"1.2.0",
 [{<<"asobi">>,
   {git,"https://github.com/widgrensit/asobi.git",
-       {ref,"06bfd38cc53cea6e9a7d7199f7ca7e416768e923"}},
+       {ref,"34d536efed1b82f8cfbec173fed30a3048729547"}},
   0},
  {<<"asobi_quests">>,
   {git,"https://github.com/widgrensit/asobi_quests.git",
